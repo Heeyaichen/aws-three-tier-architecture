@@ -1,55 +1,163 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  sam-app
+Description: Three-Tier serverless application with a Lambda function, API Gateway, S3, CloudFront, and DynamoDB.
 
-  Sample SAM Template for sam-app
-
+Parameters:
+  BucketName:
+    Type: String
+    Default: react-spa-frontend
+    Description: Name of the S3 bucket for static website hosting.
+    
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 30
+    Runtime: python3.13
+    Environment:
+      Variables:
+        BUCKET_NAME: !Ref BucketName
+        TABLE_NAME: !Ref DynamoDBTable
 
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  # Data Tier - DynamoDB 
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
     Properties:
-      CodeUri: hello_world/
+      TableName: todos
+      AttributeDefinitions:
+        - AttributeName: id 
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id  # Partition key (Primary Key)
+          KeyType: HASH  # This makes 'id' the partition key
+      BillingMode: PAY_PER_REQUEST
+
+  # Application Tier - API Gateway & Lambda
+  TodoAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+  TodoFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: todo_function/
       Handler: app.lambda_handler
-      Runtime: python3.13
-      Architectures:
-      - x86_64
+      Policies: 
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
       Events:
-        HelloWorld:
+        GetTodos:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /hello
+            RestApiId: !Ref TodoAPI
+            Path: /todos
             Method: get
+        CreateTodo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TodoAPI
+            Path: /todos
+            Method: post
+        UpdateTodo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TodoAPI
+            Path: /todos/{id}
+            Method: put
+        DeleteTodo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TodoAPI 
+            Path: /todos/{id}
+            Method: delete
+  # Presentation Tier - S3 & CloudFront
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+  
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${BucketName}-OAC"
+        Description: OAC for S3 bucket hosting the React SPA
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: "" # No OAI needed for public S3 bucket
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponsePagePath: /index.html
+            ResponseCode: 200
+            ErrorCachingMinTTL: 300
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
-  ApplicationResourceGroup:
-    Type: AWS::ResourceGroups::Group
+  CloudFrontS3AccessBucketPolicy:
+    Type: AWS::S3::BucketPolicy
     Properties:
-      Name:
-        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
-      ResourceQuery:
-        Type: CLOUDFORMATION_STACK_1_0
-  ApplicationInsightsMonitoring:
-    Type: AWS::ApplicationInsights::Application
-    Properties:
-      ResourceGroupName:
-        Ref: ApplicationResourceGroup
-      AutoConfigurationEnabled: 'true'
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: 
+              - !Sub "${FrontendBucket}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+      
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World 
-      function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  TodoApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${TodoApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  
+  CloudFrontUrl:
+    Description: CloudFront Distribution URL
+    Value: !Sub "https://${CloudFrontDistribution}.cloudfront.net"
+
+  S3BucketName:
+    Description: Name of the S3 bucket for the React SPA
+    Value: !Ref FrontendBucket
