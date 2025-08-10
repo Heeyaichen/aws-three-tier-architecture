@@ -3,7 +3,6 @@ import boto3
 import uuid
 from botocore.exceptions import ClientError
 from datetime import datetime
-from decimal import Decimal
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("todos")
@@ -30,72 +29,63 @@ def lambda_handler(event, context):
             return delete_todo(todo_id)
             
         else:
-            return {
-                "statusCode": 404,
-                "body": json.dumps({"message": "Invalid request"})
-            }                           
-
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }                   
-
-
+            return response(404, {"message": "Invalid request"})                        
+    except Exception as e:    # Catch all errors (JSON parsing, missing event keys, etc.)
+        return response(500, {"error": str(e)})
+    
 def get_todos():
-    result = table.scan()
-    todos = result['Items']
-    return {
-        "statusCode": 200,
-        "body": json.dumps(todos)
-    }
-
+    try:
+        result = table.scan()
+        return response(200, result["Items"])
+    except ClientError as e:    # Catches/Handles only DynamoDB client errors
+        return response(500, {"error": str(e)})
+ 
 def create_todo(data):
-    todo = {
-        "id": str(uuid.uuid4()),
-        "text": data["text"],
-        "completed": False,
-        "created_at": datetime.now().isoformat(),
-    }
-    response = table.put_item(Item=todo)
-    return {
-        "statusCode": 201,
-        "body": json.dumps(response)
-    }
+    try:
+        todo = {
+            "id": str(uuid.uuid4()),
+            "text": data["text"],
+            "completed": False,
+            "created_at": datetime.now().isoformat(),
+        }
+        table.put_item(Item=todo)
+        return response(201, todo)    # Return the created todo item, not the DynamoDB response
+    except ClientError as e:
+        return response(500, {"error": str(e)})
 
 def update_todo(todo_id, data):
-    update_expression = "SET "
-    expression_values = {}
+    try:
+        update_expression = "SET "
+        expression_values = {}
 
-    if "text" in data:
-        update_expression += "text = :text, "
-        expression_values[":text"] = data["text"]
-    if "completed" in data:
-        update_expression += "completed = :completed, "
-        expression_values[":completed"] = data["completed"]
+        if "text" in data:
+            update_expression += "text = :text, "
+            expression_values[":text"] = data["text"]
+        if "completed" in data:
+            update_expression += "completed = :completed, "
+            expression_values[":completed"] = data["completed"]
 
-    # Remove trailing comma and space
-    update_expression = update_expression.rstrip(", ")
+        # Remove trailing comma and space
+        update_expression = update_expression.rstrip(", ")
 
-    table.update_item(
-        Key={"id": todo_id},
-        UpdateExpression=update_expression,
-        ExpressionAttributeNames={'#text': 'text'} if 'text' in data else {},
-        ExpressionAttributeValues=expression_values
-    )
-    result = table.get_item(Key={"id": todo_id})
-    response = result.get('Item', {})
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response)
-    }
-
+        table.update_item(
+            Key={"id": todo_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames={'#text': 'text'} if 'text' in data else {},
+            ExpressionAttributeValues=expression_values
+        )
+        result = table.get_item(Key={"id": todo_id})
+        return response(200, result["Item"])
+    
+    except ClientError as e:
+        return response(500, {"error": str(e)}) 
+    
 def delete_todo(todo_id):
-    response = table.delete_item(Key={"id": todo_id})
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response)
-    }
+    try:
+        table.delete_item(Key={"id": todo_id})
+        return response(200, {"message": "Todo deleted successfully"})
+    except ClientError as e:
+        return response(500, {"error": str(e)})
 
 def response(status_code, body):
     return {

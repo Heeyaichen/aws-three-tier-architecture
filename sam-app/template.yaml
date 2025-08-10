@@ -74,6 +74,7 @@ Resources:
             RestApiId: !Ref TodoAPI 
             Path: /todos/{id}
             Method: delete
+            
   # Presentation Tier - S3 & CloudFront
   FrontendBucket:
     Type: AWS::S3::Bucket

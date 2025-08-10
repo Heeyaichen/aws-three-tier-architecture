@@ -2,10 +2,11 @@
 
 # Deploy the SAM application
 cd sam-app
-sam build && sam deploy --guided
+sam build.   # This handles/installs dependencies in requirements.txt automatically 
+sam deploy --guided
 
 # Get API URL
-API_URL = $(aws cloudformation describe-stacks --stack-name TodoAppStack --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+API_URL=$(aws cloudformation describe-stacks --stack-name TodoAppStack --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
 
 # Update the React app with the API URL
 # sed -i '' "s|const API_BASE_URL = '.*';|const API_BASE_URL = '$API_URL';|" ../frontend/src/App.
