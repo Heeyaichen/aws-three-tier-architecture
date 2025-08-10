@@ -47,8 +47,10 @@ Resources:
       CodeUri: todo_function/
       Handler: app.lambda_handler
       Policies: 
-        - DynamoDBCrudPolicy:
+        - DynamoDBCrudPolicy:    # AWS Managed Policy (Provides permissions to perform CRUD operations on DynamoDB)
             TableName: !Ref DynamoDBTable
+        - AWSLambdaBasicExecutionRole # Provides basic Lambda execution permissions
+      
       Events:
         GetTodos:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -74,7 +76,7 @@ Resources:
             RestApiId: !Ref TodoAPI 
             Path: /todos/{id}
             Method: delete
-            
+
   # Presentation Tier - S3 & CloudFront
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -130,7 +132,7 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 
-  CloudFrontS3AccessBucketPolicy:
+  CloudFrontS3AccessBucketPolicy:    # This policy allows CloudFront to access the S3 bucket
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref FrontendBucket
