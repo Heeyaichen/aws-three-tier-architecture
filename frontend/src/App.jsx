@@ -3,50 +3,94 @@ import TodoForm from './components/TodoForm';
 import TodoList from './components/TodoList';
 import './App.css';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
 function App() {
   const [todos, setTodos] = useState([]);
   const [editingTodo, setEditingTodo] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedTodos = localStorage.getItem('todos');
-    if (savedTodos) {
-      setTodos(JSON.parse(savedTodos));
-    }
+    fetchTodos();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos]);
-
-  const addTodo = (text) => {
-    const newTodo = {
-      id: Date.now(),
-      text,
-      completed: false,
-      createdAt: new Date().toISOString()
-    };
-    setTodos([...todos, newTodo]);
+  const fetchTodos = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/todos`);
+      const data = await response.json();
+      setTodos(data);
+    } catch (error) {
+      console.error('Error fetching todos:', error);
+    }
+    setLoading(false);
   };
 
-  const updateTodo = (id, text) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, text } : todo
-    ));
-    setEditingTodo(null);
+  const addTodo = async (text) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const newTodo = await response.json();
+      setTodos([...todos, newTodo]);
+    } catch (error) {
+      console.error('Error adding todo:', error);
+    }
   };
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+  const updateTodo = async (id, text) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const updatedTodo = await response.json();
+      setTodos(todos.map(todo => todo.id === id ? updatedTodo : todo));
+      setEditingTodo(null);
+    } catch (error) {
+      console.error('Error updating todo:', error);
+    }
   };
 
-  const toggleComplete = (id) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  const deleteTodo = async (id) => {
+    try {
+      await fetch(`${API_BASE_URL}/todos/${id}`, { method: 'DELETE' });
+      setTodos(todos.filter(todo => todo.id !== id));
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+    }
   };
 
-  const clearCompleted = () => {
-    setTodos(todos.filter(todo => !todo.completed));
+  const toggleComplete = async (id) => {
+    const todo = todos.find(t => t.id === id);
+    try {
+      const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !todo.completed })
+      });
+      const updatedTodo = await response.json();
+      setTodos(todos.map(t => t.id === id ? updatedTodo : t));
+    } catch (error) {
+      console.error('Error toggling todo:', error);
+    }
+  };
+
+  const clearCompleted = async () => {
+    const completedTodos = todos.filter(todo => todo.completed);
+    try {
+      await Promise.all(
+        completedTodos.map(todo => 
+          fetch(`${API_BASE_URL}/todos/${todo.id}`, { method: 'DELETE' })
+        )
+      );
+      setTodos(todos.filter(todo => !todo.completed));
+    } catch (error) {
+      console.error('Error clearing completed todos:', error);
+    }
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;
@@ -56,11 +100,13 @@ function App() {
     <div className="App">
       <header className="app-header">
         <h1>To-Do App</h1>
-        <p>Simple CRUD Todo Application</p>
+        <p>Three-Tier Architecture with AWS</p>
       </header>
       
       <main className="app-main">
         <div className="todo-container">
+          {loading && <div className="loading">Loading...</div>}
+          
           <TodoForm 
             onSubmit={editingTodo ? updateTodo : addTodo}
             editingTodo={editingTodo}
