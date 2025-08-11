@@ -41,6 +41,7 @@ Resources:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
+
   TodoFunction:
     Type: AWS::Serverless::Function 
     Properties:
@@ -49,13 +50,13 @@ Resources:
       Policies: 
         - DynamoDBCrudPolicy:    # AWS Managed Policy (Provides permissions to perform CRUD operations on DynamoDB)
             TableName: !Ref DynamoDBTable
-        - AWSLambdaBasicExecutionRole # Provides basic Lambda execution permissions
-      
+        - AWSLambdaBasicExecutionRole # Provides basic Lambda execution permissions (Allows Lambda functions to write logs to CloudWatch)
+  
       Events:
         GetTodos:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api #  This creates API Gateway → Lambda integration
           Properties:
-            RestApiId: !Ref TodoAPI
+            RestApiId: !Ref TodoAPI # Links the Lambda function to the API Gateway
             Path: /todos
             Method: get
         CreateTodo:
@@ -137,8 +138,10 @@ Resources:
     Properties:
       Bucket: !Ref FrontendBucket
       PolicyDocument:
+        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Sid: "AllowCloudFrontAccess"
+            Effect: Allow
             Principal: 
               Service: cloudfront.amazonaws.com
             Action:
