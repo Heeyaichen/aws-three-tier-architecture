@@ -147,7 +147,7 @@ Resources:
             Action:
               - s3:GetObject
             Resource: 
-              - !Sub "${FrontendBucket}/*"
+              - !Sub "arn:aws:s3:::${FrontendBucket}/*"
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
