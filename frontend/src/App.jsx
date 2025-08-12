@@ -34,7 +34,7 @@ function App() {
         body: JSON.stringify({ text })
       });
       const newTodo = await response.json();
-      setTodos([...todos, newTodo]);
+      setTodos(prev => [...prev, newTodo]);
     } catch (error) {
       console.error('Error adding todo:', error);
     }
@@ -48,7 +48,7 @@ function App() {
         body: JSON.stringify({ text })
       });
       const updatedTodo = await response.json();
-      setTodos(todos.map(todo => todo.id === id ? updatedTodo : todo));
+      setTodos(prev => prev.map(todo => todo.id === id ? updatedTodo : todo));
       setEditingTodo(null);
     } catch (error) {
       console.error('Error updating todo:', error);
@@ -58,7 +58,7 @@ function App() {
   const deleteTodo = async (id) => {
     try {
       await fetch(`${API_BASE_URL}/todos/${id}`, { method: 'DELETE' });
-      setTodos(todos.filter(todo => todo.id !== id));
+      setTodos(prev => prev.filter(todo => todo.id !== id));
     } catch (error) {
       console.error('Error deleting todo:', error);
     }
@@ -66,6 +66,7 @@ function App() {
 
   const toggleComplete = async (id) => {
     const todo = todos.find(t => t.id === id);
+    if (!todo) return;
     try {
       const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
         method: 'PUT',
@@ -73,7 +74,7 @@ function App() {
         body: JSON.stringify({ completed: !todo.completed })
       });
       const updatedTodo = await response.json();
-      setTodos(todos.map(t => t.id === id ? updatedTodo : t));
+      setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
       console.error('Error toggling todo:', error);
     }

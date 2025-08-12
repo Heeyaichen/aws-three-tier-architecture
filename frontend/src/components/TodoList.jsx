@@ -16,9 +16,9 @@ const TodoList = ({ todos, onToggle, onDelete, onEdit }) => {
         <TodoItem
           key={todo.id}
           todo={todo}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          onEdit={onEdit}
+          onToggle={() => onToggle(todo.id)}
+          onDelete={() => onDelete(todo.id)}
+          onEdit={() => onEdit(todo)}   
         />
       ))}
     </div>
