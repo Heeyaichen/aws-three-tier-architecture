@@ -54,7 +54,7 @@ Resources:
   
       Events:
         GetTodos:
-          Type: Api #  This creates API Gateway → Lambda integration
+          Type: Api #  This creates API Gateway → Lambda integration (automatically uses lambda-proxy integration)
           Properties:
             RestApiId: !Ref TodoAPI # Links the Lambda function to the API Gateway
             Path: /todos

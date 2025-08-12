@@ -2,30 +2,40 @@ import json
 import boto3
 import uuid
 from botocore.exceptions import ClientError
-from datetime import datetime
+from datetime import datetime, timezone
+import os
 
-dynamodb = boto3.resource("dynamodb")
+if os.environ.get('AWS_SAM_LOCAL'):
+    # In a local SAM environment, use the local DynamoDB endpoint
+    dynamodb = boto3.resource("dynamodb", endpoint_url="http://localhost:8000")
+else:   
+    dynamodb = boto3.resource("dynamodb")
+
+# Initialize the DynamoDB table                   
 table = dynamodb.Table("todos")
 
 def lambda_handler(event, context):
-    http_method = event['httpMethod']
-    path = event['path']
-
+    """
+    Main entry point for the Lambda function.
+    Routes requests based on HTTP method and path.
+    """
     try:
-        if http_method == 'GET' and path == '/todos':
+        method = event.get('httpMethod')
+        path_parameters = event.get('pathParameters') or {}
+        todo_id = path_parameters.get('id')
+
+        if method == 'GET' and not todo_id:
             return get_todos()
-        
-        elif http_method == 'POST' and path == '/todos':
-            body = json.loads(event['body'])
+
+        elif method == 'POST' and not todo_id:
+            body = json.loads(event['body'] or "{}")
             return create_todo(body)
 
-        elif http_method == 'PUT' and '/todos/' in path:
-            todo_id = event['pathParameters']['id']
-            body = json.loads(event['body'])
+        elif method == 'PUT' and todo_id:
+            body = json.loads(event['body'] or "{}")
             return update_todo(todo_id, body)
 
-        elif http_method == 'DELETE' and '/todos/' in path:
-            todo_id = event['pathParameters']['id']
+        elif method == 'DELETE' and todo_id:
             return delete_todo(todo_id)
             
         else:
@@ -34,6 +44,9 @@ def lambda_handler(event, context):
         return response(500, {"error": str(e)})
     
 def get_todos():
+    """
+    Fetches all todo items from the DynamoDB table.
+    """
     try:
         result = table.scan()
         return response(200, result["Items"])
@@ -41,12 +54,15 @@ def get_todos():
         return response(500, {"error": str(e)})
  
 def create_todo(data):
+    """
+    Creates a new todo item in the DynamoDB table.
+    """
     try:
         todo = {
             "id": str(uuid.uuid4()),
             "text": data["text"],
             "completed": False,
-            "created_at": datetime.now().isoformat(),
+            "createdAt": now_iso_ms(),
         }
         table.put_item(Item=todo)
         return response(201, todo)    # Return the created todo item, not the DynamoDB response
@@ -54,40 +70,69 @@ def create_todo(data):
         return response(500, {"error": str(e)})
 
 def update_todo(todo_id, data):
+    """
+    Updates an existing todo item in the DynamoDB table.
+    - Fixes the bug where update expression was not correctly constructed.
+    - Uses ReturnValues='ALL_NEW' to get the updated item directly.
+    """
     try:
-        update_expression = "SET "
+        update_expression = []
         expression_values = {}
+        expression_names = {}
 
         if "text" in data:
-            update_expression += "text = :text, "
+            update_expression.append("#txt = :text")
             expression_values[":text"] = data["text"]
+            expression_names["#txt"] = "text" 
+
         if "completed" in data:
-            update_expression += "completed = :completed, "
-            expression_values[":completed"] = data["completed"]
+            update_expression.append("completed = :completed")
+            expression_values[":completed"] = bool(data["completed"])
+            expression_names["#completed"] = "completed"
+
+        if not update_expression:
+            return response(400, {"message": "No updatable fields provided"})
 
         # Remove trailing comma and space
-        update_expression = update_expression.rstrip(", ")
+        update_expression = "SET " + ", ".join(update_expression)
 
-        table.update_item(
+        result = table.update_item(
             Key={"id": todo_id},
             UpdateExpression=update_expression,
-            ExpressionAttributeNames={'#text': 'text'} if 'text' in data else {},
+            ExpressionAttributeNames=expression_names if expression_names else None,
+            ReturnValues="ALL_NEW",
             ExpressionAttributeValues=expression_values
         )
-        result = table.get_item(Key={"id": todo_id})
-        return response(200, result["Item"])
+        return response(200, result["Attributes"])
     
     except ClientError as e:
         return response(500, {"error": str(e)}) 
     
 def delete_todo(todo_id):
+    """
+    Deletes a specific todo item.
+    - Checks if the item exists before attempting to delete it.
+    """
     try:
+        result = table.get_item(Key={"id": todo_id})
+        if 'Item' not in result:
+            return response(404, {"message": "Todo item not found"})
+        
+        # Proceed to delete the item if it exists
         table.delete_item(Key={"id": todo_id})
-        return response(200, {"message": "Todo deleted successfully"})
+        return response(200, {"message": "Todo item deleted successfully"})
+    
     except ClientError as e:
         return response(500, {"error": str(e)})
 
+def now_iso_ms():
+    """Returns the current time in ISO 8601 format with milliseconds."""
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
 def response(status_code, body):
+    """
+    Constructs a standardized API Gateway response.
+    """
     return {
         "statusCode": status_code,
         "headers": {
