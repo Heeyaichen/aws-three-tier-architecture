@@ -109,6 +109,8 @@ Resources:
             OriginAccessControlId: !GetAtt OriginAccessControl.Id
             S3OriginConfig:
               OriginAccessIdentity: "" # No OAI needed for public S3 bucket
+        
+        
         Enabled: true
         DefaultRootObject: index.html
         DefaultCacheBehavior:

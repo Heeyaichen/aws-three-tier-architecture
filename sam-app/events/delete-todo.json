@@ -1,0 +1,10 @@
+{
+  "httpMethod": "DELETE",
+  "path": "/todos/123",
+  "pathParameters": {
+    "id": "123"
+  },
+  "headers": {},
+  "body": null,
+  "isBase64Encoded": false
+}

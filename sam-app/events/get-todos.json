@@ -1,0 +1,12 @@
+{
+  "httpMethod": "GET",
+  "path": "/todos",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": {
+    "status": "completed"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}

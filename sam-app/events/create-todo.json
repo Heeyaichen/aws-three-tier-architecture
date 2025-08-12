@@ -1,0 +1,9 @@
+{
+  "httpMethod": "POST",
+  "path": "/todos",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"text\": \"Test todo from local invoke\"}",
+  "isBase64Encoded": false
+}
