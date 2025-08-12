@@ -3,7 +3,19 @@
 # Deploy the SAM application (infrastructure)
 cd sam-app
 sam build   # This handles/installs dependencies in requirements.txt automatically 
-sam deploy --guided
+
+# Check if stack exists and is in failed state
+STACK_STATUS=$(aws cloudformation describe-stacks --stack-name sam-app --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ]; then
+    echo "Stack is in failed state ($STACK_STATUS). Deleting and recreating..."
+    aws cloudformation delete-stack --stack-name sam-app
+    aws cloudformation wait stack-delete-complete --stack-name sam-app
+    echo "Stack deleted. Proceeding with deployment..."
+fi
+
+# Deploy the SAM application
+sam deploy 
 
 # Get invoke URL of the deployed API Gateway (retrieves the API URL from the CloudFormation stack outputs)
 API_URL=$(aws cloudformation describe-stacks --stack-name sam-app --query "Stacks[0].Outputs[?OutputKey=='TodoApiUrl'].OutputValue" --output text)
