@@ -76,6 +76,10 @@ def update_todo(todo_id, data):
     - Uses ReturnValues='ALL_NEW' to get the updated item directly.
     """
     try:
+        existing_item = table.get_item(Key={"id": todo_id})
+        if 'Item' not in existing_item:
+            return response(404, {"message": "Todo item not found"})
+        
         update_expression = []
         expression_values = {}
         expression_names = {}
@@ -86,7 +90,7 @@ def update_todo(todo_id, data):
             expression_names["#txt"] = "text" 
 
         if "completed" in data:
-            update_expression.append("completed = :completed")
+            update_expression.append("#completed = :completed")
             expression_values[":completed"] = bool(data["completed"])
             expression_names["#completed"] = "completed"
 
@@ -96,15 +100,23 @@ def update_todo(todo_id, data):
         # Remove trailing comma and space
         update_expression = "SET " + ", ".join(update_expression)
 
-        result = table.update_item(
-            Key={"id": todo_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeNames=expression_names if expression_names else None,
-            ReturnValues="ALL_NEW",
-            ExpressionAttributeValues=expression_values
-        )
-        return response(200, result["Attributes"])
-    
+        params = {
+            "Key": {"id": todo_id},
+            "UpdateExpression": update_expression,
+            "ExpressionAttributeValues": expression_values,
+            "ReturnValues": "ALL_NEW"
+        }
+        if expression_names:
+            params["ExpressionAttributeNames"] = expression_names
+            
+        result = table.update_item(**params)
+
+        # Preserve original createdAt in the response
+        updated_item = result["Attributes"]
+        updated_item["createdAt"] = existing_item["Item"]["createdAt"]
+
+        return response(200, updated_item)
+
     except ClientError as e:
         return response(500, {"error": str(e)}) 
     
@@ -133,6 +145,12 @@ def response(status_code, body):
     """
     Constructs a standardized API Gateway response.
     """
+    if isinstance(body, dict) and "createdAt" in body:
+        try:
+            body["createdAt"] = datetime.fromisoformat(body["createdAt"].replace("Z", "+00:00")).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        except (ValueError, TypeError):
+            pass
+
     return {
         "statusCode": status_code,
         "headers": {
