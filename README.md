@@ -11,6 +11,7 @@ A modern, serverless three-tier web application built on AWS, demonstrating best
 - [Architecture Deep Dive](#architecture-deep-dive)
 - [IAM Roles & Permissions](#iam-roles--permissions)
 - [Service Interactions](#service-interactions)
+- [CORS Configuration](#cors-configuration)
 - [Deployment](#deployment)
 - [Cleanup](#cleanup)
 - [API Documentation](#api-documentation)
@@ -320,6 +321,131 @@ def lambda_handler(event, context):
     # ... other routes
 ```
 
+#### 5. DynamoDB Operations
+**Table Configuration:**
+```yaml
+DynamoDBTable:
+  Type: AWS::DynamoDB::Table
+  Properties:
+    TableName: todos
+    AttributeDefinitions:
+      - AttributeName: id 
+        AttributeType: S
+    KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+    BillingMode: PAY_PER_REQUEST
+```
+
+**Lambda DynamoDB Access:**
+```python
+# Initialize DynamoDB resource
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("todos")
+
+# CRUD operations
+def get_todos():
+    result = table.scan()
+    return response(200, result["Items"])
+
+def create_todo(data):
+    todo = {
+        "id": str(uuid.uuid4()),
+        "text": data["text"],
+        "completed": False,
+        "createdAt": now_iso_ms(),
+    }
+    table.put_item(Item=todo)
+    return response(201, todo)
+```
+
+### Environment Variables & Configuration
+
+**SAM Template Global Variables:**
+```yaml
+Globals:
+  Function:
+    Environment:
+      Variables:
+        BUCKET_NAME: !Ref BucketName
+        TABLE_NAME: !Ref DynamoDBTable
+```
+
+**React Environment Configuration:**
+```javascript
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+```
+
+## 🌐 CORS Configuration
+
+Cross-Origin Resource Sharing (CORS) is critical for this architecture since the React frontend (served from CloudFront) needs to make API calls to API Gateway. This application implements CORS at multiple levels:
+
+### 1. API Gateway CORS Configuration
+
+**Template Configuration:**
+```yaml
+TodoAPI:
+  Type: AWS::Serverless::Api
+  Properties:
+    StageName: prod
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+```
+
+**Purpose**: Enables API Gateway to handle preflight OPTIONS requests and set appropriate CORS headers.
+
+**Key Settings**:
+- `AllowMethods`: Permits all HTTP methods used by the application
+- `AllowHeaders`: Allows standard headers plus AWS-specific headers
+- `AllowOrigin`: Set to `'*'` for development (restrict in production)
+
+**Documentation**: [API Gateway CORS](https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html)
+
+### 2. Lambda Function CORS Headers
+
+**Response Headers in app.py:**
+```python
+def response(status_code, body):
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        },
+        "body": json.dumps(body, default=str)
+    }
+```
+
+**Purpose**: Ensures every Lambda response includes CORS headers for browser compatibility.
+
+### 3. CloudFront CORS Header Forwarding
+
+**CloudFront Configuration:**
+```yaml
+CacheBehaviors:
+- PathPattern: "/api/*"
+  ForwardedValues:
+    Headers:
+      - Authorization
+      - Content-Type
+```
+
+**Purpose**: Ensures CloudFront forwards necessary headers to API Gateway for CORS processing.
+
+### 4. Common CORS Issues & Solutions
+
+#### Issue: "CORS policy: No 'Access-Control-Allow-Origin' header"
+**Solution**: Verify both API Gateway and Lambda function return CORS headers
+
+#### Issue: "CORS policy: Request header 'content-type' is not allowed"
+**Solution**: Add `Content-Type` to `AllowHeaders` in API Gateway configuration
+
+#### Issue: Preflight requests failing
+**Solution**: Ensure API Gateway handles OPTIONS method correctly and returns appropriate CORS headers
 #### 5. DynamoDB Operations
 **Table Configuration:**
 ```yaml
