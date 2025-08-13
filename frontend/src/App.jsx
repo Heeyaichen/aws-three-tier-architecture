@@ -42,11 +42,22 @@ function App() {
 
   const updateTodo = async (id, text) => {
     try {
+      const todo = todos.find(t => t.id === id);
+      if (!todo) return;
+
+      // Update the text of the todo, keeping the completed status unchanged
       const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ 
+          text,
+          completed: todo.completed
+        })
       });
+
+      if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    } 
       const updatedTodo = await response.json();
       setTodos(prev => prev.map(todo => todo.id === id ? updatedTodo : todo));
       setEditingTodo(null);
@@ -71,8 +82,16 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: !todo.completed })
+        body: JSON.stringify({ 
+          completed: !todo.completed,
+          text: todo.text, // Preserve the text when toggling completion
+        })
       });
+
+      if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
       const updatedTodo = await response.json();
       setTodos(prev => prev.map(t => t.id === id ? updatedTodo : t));
     } catch (error) {
