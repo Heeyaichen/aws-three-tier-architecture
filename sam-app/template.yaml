@@ -57,25 +57,25 @@ Resources:
           Type: Api #  This creates API Gateway → Lambda integration (automatically uses lambda-proxy integration)
           Properties:
             RestApiId: !Ref TodoAPI # Links the Lambda function to the API Gateway
-            Path: /todos
+            Path: /api/todos
             Method: get
         CreateTodo:
           Type: Api
           Properties:
             RestApiId: !Ref TodoAPI
-            Path: /todos
+            Path: /api/todos
             Method: post
         UpdateTodo:
           Type: Api
           Properties:
             RestApiId: !Ref TodoAPI
-            Path: /todos/{id}
+            Path: /api/todos/{id}
             Method: put
         DeleteTodo:
           Type: Api
           Properties:
-            RestApiId: !Ref TodoAPI 
-            Path: /todos/{id}
+            RestApiId: !Ref TodoAPI
+            Path: /api/todos/{id}
             Method: delete
 
   # Presentation Tier - S3 & CloudFront
@@ -109,10 +109,44 @@ Resources:
             OriginAccessControlId: !GetAtt OriginAccessControl.Id
             S3OriginConfig:
               OriginAccessIdentity: "" # No OAI needed for public S3 bucket
-        
-        
+          # Add API Gateway as second origin
+          - Id: ApiOrigin
+            DomainName: !Sub "${TodoAPI}.execute-api.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              HTTPPort: 443
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
         Enabled: true
         DefaultRootObject: index.html
+        # Cache behaviors for API routing
+        CacheBehaviors:
+        # Route /api/* to API Gateway
+        - PathPattern: "/api/*"
+          TargetOriginId: ApiOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: none
+            Headers:
+              - Authorization
+              - Content-Type
+              - "X-Amz-Date"
+              - "X-Api-Key"
+          # Cache API responses for 0 seconds (no caching) 
+          DefaultTTL: 0  # No caching for API calls       
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https

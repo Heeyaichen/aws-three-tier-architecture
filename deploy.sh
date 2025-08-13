@@ -23,12 +23,16 @@ API_URL=$(aws cloudformation describe-stacks --stack-name sam-app --query "Stack
 # Get CloudFront URL for the frontend (retrieves the CloudFront URL from the CloudFormation stack outputs)
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks --stack-name sam-app --query "Stacks[0].Outputs[?OutputKey=='CloudFrontUrl'].OutputValue" --output text)
 
+# Get the S3 bucket name from the CloudFormation stack outputs
 BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name sam-app --query "Stacks[0].Outputs[?OutputKey=='S3BucketName'].OutputValue" --output text)
+
+# Check if the API URL is valid
 if [ -z "$API_URL" ]; then
   echo "Error: API URL not found. Please check the deployment."
   exit 1
 fi
 echo "API URL: $API_URL"
+
 
 # Check if the bucket exists
 if ! aws s3 ls "s3://$BUCKET_NAME" > /dev/null 2>&1; then
@@ -43,8 +47,8 @@ cd ../frontend
 # Install dependencies
 npm install
 
-# Update the React app with the API URL
-echo "VITE_API_BASE_URL=$API_URL" > .env
+# Set API base URL to relative path for CloudFront routing
+echo "VITE_API_BASE_URL=/api" > .env
 
 # Build and deploy frontend
 npm run build
@@ -56,4 +60,4 @@ aws s3 sync dist/ s3://$BUCKET_NAME/ --delete
 
 echo "✅ Deployment complete. Your React app is now connected to the API and hosted on S3."
 echo "🌐 You can access your app at: $CLOUDFRONT_URL"
-echo "🔗 API endpoint: $API_URL"
+echo "🔗 API endpoint: $CLOUDFRONT_URL/api"
