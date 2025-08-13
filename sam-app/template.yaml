@@ -112,6 +112,7 @@ Resources:
           # Add API Gateway as second origin
           - Id: ApiOrigin
             DomainName: !Sub "${TodoAPI}.execute-api.${AWS::Region}.amazonaws.com"
+            OriginPath: "/prod"
             CustomOriginConfig:
               HTTPPort: 443
               HTTPSPort: 443
@@ -145,7 +146,10 @@ Resources:
               - Authorization
               - Content-Type
           # Cache API responses for 0 seconds (no caching) 
-          DefaultTTL: 0  # No caching for API calls       
+          # No caching for API calls       
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https
