@@ -1,7 +1,15 @@
 import React from 'react';
 
 const TodoItem = ({ todo, onToggle, onDelete, onEdit }) => {
-  const isValidDate = todo.createdAt && !isNaN(new Date(todo.createdAt));
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Invalid date';
+    try {
+      const date = new Date(dateString);
+      return isNaN(date) ? 'Invalid date' : date.toLocaleDateString();
+    } catch {
+      return 'Invalid date';
+    }
+  };
   
   return (
     <div className={`todo-item ${todo.completed ? 'completed' : ''}`}>
@@ -15,7 +23,7 @@ const TodoItem = ({ todo, onToggle, onDelete, onEdit }) => {
         />
         <span className="todo-text">{todo.text}</span>
         <span className="todo-date">
-          {isValidDate ? new Date(todo.createdAt).toLocaleDateString() : 'Invalid date'}
+          {formatDate(todo.createdAt)}
         </span>
       </div>
       <div className="todo-actions">
