@@ -1,6 +1,6 @@
-# AWS Three-Tier Serverless Todo Application
+# AWS Three-Tier Serverless Application
 
-A modern, serverless three-tier web application built on AWS, demonstrating best practices for cloud-native architecture using React, AWS Lambda, API Gateway, DynamoDB, S3, and CloudFront.
+A modern, serverless three-tier-architecture web application built on AWS, demonstrating best practices for cloud-native architecture using React, AWS Lambda, API Gateway, DynamoDB, S3, and CloudFront.
 
 ## 📋 Table of Contents
 
