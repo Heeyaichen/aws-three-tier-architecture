@@ -127,12 +127,13 @@ Resources:
           TargetOriginId: ApiOrigin
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
-            - GET
             - HEAD
+            - DELETE
+            - POST
+            - GET
             - OPTIONS
             - PUT
-            - POST
-            - DELETE
+            - PATCH
           CachedMethods:
             - GET
             - HEAD
@@ -143,16 +144,15 @@ Resources:
             Headers:
               - Authorization
               - Content-Type
-              - "X-Amz-Date"
-              - "X-Api-Key"
           # Cache API responses for 0 seconds (no caching) 
           DefaultTTL: 0  # No caching for API calls       
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
-            - GET
             - HEAD
+            - GET
+            - OPTIONS
           CachedMethods:
             - GET
             - HEAD
