@@ -244,9 +244,28 @@ $RECYCLE.BIN/
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
 
 
+# AWS SAM Build Artifacts
 .aws-sam/
+
+# AWS Credentials (never commit these)
+.aws/
+aws-credentials.json
+credentials.json
+
+# CloudFormation
+*.template
+packaged-template.yaml
+
+# Lambda layers
+layers/
+
+# Python
 *.pyc
 __pycache__/
+
+# Environment files
 .env
 .venv/
+
+# Node modules (if any)
 node_modules/

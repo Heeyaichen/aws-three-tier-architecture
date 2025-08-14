@@ -1,0 +1,68 @@
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
+# AWS Credentials (never commit these)
+.aws/
+aws-credentials.json
+credentials.json
+
+# CloudFormation
+*.template
+packaged-template.yaml
+
+# Logs
+*.log
+logs/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build outputs
+dist/
+build/
+
+# Node modules (in case of root level packages)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output
