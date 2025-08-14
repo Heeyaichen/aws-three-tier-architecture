@@ -2,6 +2,8 @@
 
 A modern, serverless three-tier-architecture web application built on AWS, demonstrating best practices for cloud-native architecture using React, AWS Lambda, API Gateway, DynamoDB, S3, and CloudFront.
 
+<img width="661" height="631" alt="Image" src="https://github.com/user-attachments/assets/f7cbdf82-c71a-4b3b-911e-255f00357f70" />
+
 ## 📋 Table of Contents
 
 - [Architecture Overview](#🏗️-architecture-overview)
@@ -23,9 +25,6 @@ A modern, serverless three-tier-architecture web application built on AWS, demon
 ## 🏗️ Architecture Overview
 
 This application implements a **three-tier serverless architecture** on AWS:
-
-<img width="661" height="631" alt="Image" src="https://github.com/user-attachments/assets/f7cbdf82-c71a-4b3b-911e-255f00357f70" />
-
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
