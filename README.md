@@ -19,6 +19,7 @@ A modern, serverless three-tier-architecture web application built on AWS, demon
 - [Contributing](#🤝-contributing)
 - [Future Enhancements](#🚀-future-enhancements)
 
+<img width="661" height="631" alt="Image" src="https://github.com/user-attachments/assets/f7cbdf82-c71a-4b3b-911e-255f00357f70" />
 
 ## 🏗️ Architecture Overview
 
