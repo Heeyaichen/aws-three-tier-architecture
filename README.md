@@ -4,19 +4,19 @@ A modern, serverless three-tier-architecture web application built on AWS, demon
 
 ## 📋 Table of Contents
 
-- [Architecture Overview](#architecture-overview)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Architecture Deep Dive](#architecture-deep-dive)
-- [IAM Roles & Permissions](#iam-roles--permissions)
-- [Service Interactions](#service-interactions)
-- [CORS Configuration](#cors-configuration)
-- [Deployment](#deployment)
-- [Cleanup](#cleanup)
-- [API Documentation](#api-documentation)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- [Architecture Overview](#🏗️-architecture-overview)
+- [Project Structure](#📁-project-structure)
+- [Prerequisites](#🔧-prerequisites)
+- [Getting Started](#🚀-getting-started)
+- [Architecture Deep Dive](#🏛️-architecture-deep-dive)
+- [IAM Roles & Permissions](#🔐-iam-roles--permissions)
+- [Service Interactions](#🔄-service-interactions)
+- [CORS Configuration](#🌐-cors-configuration)
+- [Deployment](#📦-deployment)
+- [Cleanup](#🧹-cleanup)
+- [API Documentation](#📚-api-documentation)
+- [Troubleshooting](#🔧-troubleshooting)
+- [Contributing](#🤝-contributing)
 
 ## 🏗️ Architecture Overview
 
@@ -80,10 +80,11 @@ aws-three-tier-architecture/
    ```bash
    # macOS
    brew install aws-sam-cli
-   
-   # Windows/Linux
-   # Follow: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
-   ```
+    ```
+   #### For Windows/Linux:
+   #### Follow: [SAM CLI Installation Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+
+ 
 
 3. **Node.js & npm** - Frontend development
    ```bash
@@ -446,43 +447,7 @@ CacheBehaviors:
 
 #### Issue: Preflight requests failing
 **Solution**: Ensure API Gateway handles OPTIONS method correctly and returns appropriate CORS headers
-#### 5. DynamoDB Operations
-**Table Configuration:**
-```yaml
-DynamoDBTable:
-  Type: AWS::DynamoDB::Table
-  Properties:
-    TableName: todos
-    AttributeDefinitions:
-      - AttributeName: id 
-        AttributeType: S
-    KeySchema:
-      - AttributeName: id
-        KeyType: HASH
-    BillingMode: PAY_PER_REQUEST
-```
 
-**Lambda DynamoDB Access:**
-```python
-# Initialize DynamoDB resource
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("todos")
-
-# CRUD operations
-def get_todos():
-    result = table.scan()
-    return response(200, result["Items"])
-
-def create_todo(data):
-    todo = {
-        "id": str(uuid.uuid4()),
-        "text": data["text"],
-        "completed": False,
-        "createdAt": now_iso_ms(),
-    }
-    table.put_item(Item=todo)
-    return response(201, todo)
-```
 
 ### Environment Variables & Configuration
 
@@ -507,39 +472,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 The [`deploy.sh`](./deploy.sh) script automates the entire deployment process:
 
-```bash
-#!/bin/bash
-set -e
 
-echo "🚀 Starting deployment of AWS Three-Tier Architecture..."
-
-# 1. Deploy SAM application
-cd sam-app
-echo "📦 Building and deploying SAM application..."
-sam build
-sam deploy
-
-# 2. Extract CloudFormation outputs
-echo "📋 Extracting deployment outputs..."
-STACK_NAME=$(grep stack_name samconfig.toml | cut -d'"' -f2)
-API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`TodoApiUrl`].OutputValue' --output text)
-CLOUDFRONT_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' --output text)
-S3_BUCKET=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' --output text)
-
-# 3. Build and deploy frontend
-cd ../frontend
-echo "🏗️  Building React application..."
-echo "VITE_API_BASE_URL=$CLOUDFRONT_URL/api" > .env.production
-npm install
-npm run build
-
-# 4. Upload to S3
-echo "☁️  Uploading to S3..."
-aws s3 sync dist/ s3://$S3_BUCKET --delete
-
-echo "✅ Deployment completed successfully!"
-echo "🌐 Application URL: $CLOUDFRONT_URL"
-```
 
 **Key Features:**
 - Builds and deploys SAM application
@@ -576,26 +509,10 @@ echo "🌐 Application URL: $CLOUDFRONT_URL"
 
 The [`delete.sh`](./delete.sh) script safely removes all AWS resources:
 
-```bash
-#!/bin/bash
-set -e
-
-echo "🗑️  Starting cleanup of AWS Three-Tier Architecture..."
-
-cd sam-app
-STACK_NAME=$(grep stack_name samconfig.toml | cut -d'"' -f2)
-
-# 1. Empty S3 bucket (required before deletion)
-echo "🪣 Emptying S3 bucket..."
-S3_BUCKET=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' --output text)
-aws s3 rm s3://$S3_BUCKET --recursive
-
-# 2. Delete CloudFormation stack
-echo "☁️  Deleting CloudFormation stack..."
-sam delete --stack-name $STACK_NAME
-
-echo "✅ Cleanup completed successfully!"
-```
+**Key Features:**
+- Deletes CloudFormation stack
+- Removes S3 bucket and its contents
+- Ensures no orphaned resources remain
 
 **Important**: S3 buckets must be empty before CloudFormation can delete them.
 
@@ -722,4 +639,4 @@ sam validate
 
 ---
 
-**Built with ❤️ using AWS Serverless Technologies**
+**Built using AWS Serverless Technologies**
